@@ -231,11 +231,13 @@ class WhisperFileTranscriber(FileTranscriber):
             effective_task = task.transcription_options.task.value
             word_timestamps = task.transcription_options.word_level_timings
 
+        initial_prompt = "" if model.is_mms_model else (task.transcription_options.initial_prompt or "")
         result = model.transcribe(
             audio=task.file_path,
             language=language,
             task=effective_task,
             word_timestamps=word_timestamps,
+            initial_prompt=initial_prompt,
         )
         return [
             Segment(

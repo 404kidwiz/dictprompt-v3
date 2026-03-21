@@ -170,6 +170,7 @@ class ModelType(enum.Enum):
             ModelType.WHISPER_CPP,
             ModelType.OPEN_AI_WHISPER_API,
             ModelType.FASTER_WHISPER,
+            ModelType.HUGGING_FACE,
         )
 
     def is_available(self):

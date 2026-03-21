@@ -115,7 +115,7 @@ class TestModelType:
         assert ModelType.WHISPER_CPP.supports_initial_prompt is True
         assert ModelType.OPEN_AI_WHISPER_API.supports_initial_prompt is True
         assert ModelType.FASTER_WHISPER.supports_initial_prompt is True
-        assert ModelType.HUGGING_FACE.supports_initial_prompt is False
+        assert ModelType.HUGGING_FACE.supports_initial_prompt is True
 
     @pytest.mark.parametrize(
         "platform_system,platform_machine,expected_faster_whisper",

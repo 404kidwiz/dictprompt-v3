@@ -204,12 +204,13 @@ class TransformersTranscriber:
         language: str,
         task: str,
         word_timestamps: bool = False,
+        initial_prompt: str = "",
     ):
         """Transcribe audio using either Whisper or MMS model."""
         if self._is_mms:
             return self._transcribe_mms(audio, language)
         else:
-            return self._transcribe_whisper(audio, language, task, word_timestamps)
+            return self._transcribe_whisper(audio, language, task, word_timestamps, initial_prompt)
 
     def _transcribe_whisper(
         self,
@@ -217,6 +218,7 @@ class TransformersTranscriber:
         language: str,
         task: str,
         word_timestamps: bool = False,
+        initial_prompt: str = "",
     ):
         """Transcribe using Whisper model."""
         force_cpu = os.getenv("BUZZ_FORCE_CPU", "false")
@@ -263,15 +265,19 @@ class TransformersTranscriber:
 
             processor = AutoProcessor.from_pretrained(self.model_id)
 
+        generate_kwargs = {
+            "language": language,
+            "task": task,
+            "no_repeat_ngram_size": 3,
+            "repetition_penalty": 1.2,
+        }
+        if initial_prompt:
+            generate_kwargs["prompt_ids"] = processor.get_prompt_ids(initial_prompt, return_tensors="pt")
+
         pipeline_kwargs = {
             "task": "automatic-speech-recognition",
             "pipeline_class": PipelineWithProgress,
-            "generate_kwargs": {
-                "language": language,
-                "task": task,
-                "no_repeat_ngram_size": 3,
-                "repetition_penalty": 1.2,
-            },
+            "generate_kwargs": generate_kwargs,
             "model": model,
             "tokenizer": processor.tokenizer,
             "feature_extractor": processor.feature_extractor,
