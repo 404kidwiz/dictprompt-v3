@@ -212,6 +212,29 @@ class TransformersTranscriber:
         else:
             return self._transcribe_whisper(audio, language, task, word_timestamps, initial_prompt)
 
+    @staticmethod
+    def _get_prompt_ids(processor, initial_prompt: str):
+        """Build prompt token IDs for Whisper, bypassing the special-token validation
+        in get_prompt_ids() that fails for some fine-tuned models (e.g. NbAiLab/nb-whisper-*)
+        whose vocabularies contain tokens that collide with Whisper special token IDs."""
+        # generate() in generation_whisper.py expects a 1D tensor and does
+        # prompt_ids[None].repeat(batch_size, 1) internally, so we must not
+        # include a batch dimension here.
+        try:
+            return processor.get_prompt_ids(initial_prompt, return_tensors="pt").squeeze(0)
+        except ValueError:
+            pass
+
+        # Fallback: tokenize directly and filter out any special tokens, then
+        # prepend <|startofprev|> manually — same logic as get_prompt_ids but
+        # without raising on collisions (happens with some fine-tuned models
+        # such as NbAiLab/nb-whisper-* whose vocab overlaps special token IDs).
+        token_ids = processor.tokenizer(initial_prompt, add_special_tokens=False).input_ids
+        special_ids = set(processor.tokenizer.all_special_ids)
+        token_ids = [tid for tid in token_ids if tid not in special_ids]
+        startofprev_id = processor.tokenizer.convert_tokens_to_ids("<|startofprev|>")
+        return torch.tensor([startofprev_id] + token_ids, dtype=torch.long)
+
     def _transcribe_whisper(
         self,
         audio: Union[str, np.ndarray],
@@ -272,7 +295,7 @@ class TransformersTranscriber:
             "repetition_penalty": 1.2,
         }
         if initial_prompt:
-            generate_kwargs["prompt_ids"] = processor.get_prompt_ids(initial_prompt, return_tensors="pt")
+            generate_kwargs["prompt_ids"] = self._get_prompt_ids(processor, initial_prompt)
 
         pipeline_kwargs = {
             "task": "automatic-speech-recognition",
